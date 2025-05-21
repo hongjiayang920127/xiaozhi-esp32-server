@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  mysql_db:
+    image: mysql:8.0
+    container_name: xiaozhi_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-strongpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-xiaozhi}
+      MYSQL_USER: ${MYSQL_USER:-xiaozhi_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-userpass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - xiaozhi_network
+
+  redis_cache:
+    image: redis:6.2-alpine
+    container_name: xiaozhi_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - xiaozhi_network
+
+  xiaozhi-device-service:
+    build:
+      context: ./main/xiaozhi-server
+      dockerfile: Dockerfile-server
+    container_name: xiaozhi_device_service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8002:8002"
+    environment:
+      REDIS_HOST: redis_cache
+      REDIS_PORT: 6379
+      MANAGER_API_URL: http://xiaozhi-manager-api:8080
+    volumes:
+      - ./main/xiaozhi-server/config.yaml:/opt/xiaozhi-esp32-server/config.yaml
+      - ./main/xiaozhi-server/data:/opt/xiaozhi-esp32-server/data
+    depends_on:
+      - mysql_db
+      - redis_cache
+    networks:
+      - xiaozhi_network
+
+  xiaozhi-manager-api:
+    build:
+      context: ./main/manager-api
+      dockerfile: Dockerfile
+    container_name: xiaozhi_manager_api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql_db:3306/${MYSQL_DATABASE:-xiaozhi}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-xiaozhi_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-userpass}
+      SPRING_REDIS_HOST: redis_cache
+      SPRING_REDIS_PORT: 6379
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      - mysql_db
+      - redis_cache
+    networks:
+      - xiaozhi_network
+
+  xiaozhi-manager-web:
+    build:
+      context: ./main/manager-web
+      dockerfile: Dockerfile
+    container_name: xiaozhi_manager_web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - xiaozhi-manager-api
+    networks:
+      - xiaozhi_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  xiaozhi_network:
+    driver: bridge
+
