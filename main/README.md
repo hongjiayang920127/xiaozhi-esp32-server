@@ -6,9 +6,11 @@
 ```
 xiaozhi-esp32-server
   ├─ xiaozhi-server 8000 端口 Python语言开发 负责与esp32通信
-  ├─ manager-web 8001 端口 Node.js+Vue开发 负责提供控制台的web界面
-  ├─ manager-api 8002 端口 Java语言开发 负责提供控制台的api
+  ├─ manager-web 80 端口（Docker 默认） Node.js+Vue开发 负责提供控制台的web界面
+  ├─ manager-api 8080 端口（Docker 默认） Java语言开发 负责提供控制台的api
 ```
+
+> 这些端口号基于 `docker-compose.yml` 的配置，若在本地独立运行各服务，可自行修改端口。
 
 # xiaozhi-server 和ESP32通讯协议
 
